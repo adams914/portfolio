@@ -1,0 +1,958 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>爱看书的YY · AI 独立开发者</title>
+  <meta name="description" content="用 AI 造工具，也写历史。独立开发者作品集。">
+  <link rel="icon" href="assets/haomark.png" type="image/png">
+  <style>
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+    html { scroll-behavior: smooth; -webkit-font-smoothing: antialiased; }
+
+    :root {
+      --bg: #0a0a0f;
+      --bg-2: #12121a;
+      --surface: rgba(255,255,255,0.03);
+      --surface-hover: rgba(255,255,255,0.06);
+      --text: #f0f0f5;
+      --text-soft: #a0a0b0;
+      --text-faint: #606070;
+      --border: rgba(255,255,255,0.08);
+      --border-hover: rgba(255,255,255,0.15);
+      --accent: #7c5cfc;
+      --accent-2: #00d4ff;
+      --accent-glow: rgba(124,92,252,0.4);
+      --radius: 16px;
+      --max-width: 960px;
+      --font: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans SC", sans-serif;
+    }
+
+    body {
+      font-family: var(--font);
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.7;
+      font-size: 16px;
+      overflow-x: hidden;
+    }
+
+    /* ===== 流动背景光斑 ===== */
+    .bg-orbs { position: fixed; inset: 0; z-index: 0; overflow: hidden; pointer-events: none; }
+    .orb {
+      position: absolute; border-radius: 50%; filter: blur(80px); opacity: 0.2;
+      animation: orbFloat 20s ease-in-out infinite;
+    }
+    .orb-1 { width: 600px; height: 600px; background: var(--accent); top: -150px; left: -150px; }
+    .orb-2 { width: 500px; height: 500px; background: var(--accent-2); top: 40%; right: -150px; animation-delay: -5s; animation-duration: 25s; }
+    .orb-3 { width: 400px; height: 400px; background: #ff6b9d; bottom: -100px; left: 30%; animation-delay: -10s; animation-duration: 30s; }
+    @keyframes orbFloat {
+      0%,100% { transform: translate(0,0) scale(1); }
+      33% { transform: translate(60px,-40px) scale(1.1); }
+      66% { transform: translate(-40px,30px) scale(0.95); }
+    }
+
+    /* ===== 噪点纹理 ===== */
+    .bg-noise {
+      position: fixed; inset: 0; z-index: 1; pointer-events: none; opacity: 0.03;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' /%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' /%3E%3C/svg%3E");
+    }
+
+    /* ===== Canvas 流动网格 ===== */
+    #bgCanvas {
+      position: fixed; inset: 0; z-index: 0; pointer-events: none;
+    }
+
+    .content { position: relative; z-index: 2; }
+
+    /* ===== 导航 ===== */
+    nav {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+      background: rgba(10,10,15,0.7);
+      backdrop-filter: blur(20px) saturate(1.5);
+      -webkit-backdrop-filter: blur(20px) saturate(1.5);
+      border-bottom: 1px solid var(--border);
+      transform: translateY(-100%);
+      transition: transform 0.4s cubic-bezier(0.2,0,0.2,1);
+    }
+    nav.visible { transform: translateY(0); }
+    .nav-inner {
+      max-width: var(--max-width); margin: 0 auto;
+      padding: 16px 24px;
+      display: flex; justify-content: space-between; align-items: center;
+    }
+    .nav-name { font-weight: 600; font-size: 15px; letter-spacing: -0.01em; }
+    .nav-name a { color: inherit; text-decoration: none; }
+    .nav-links { display: flex; gap: 28px; align-items: center; }
+    .nav-links a {
+      color: var(--text-soft); text-decoration: none; font-size: 14px;
+      transition: color 0.2s;
+    }
+    .nav-links a:hover { color: var(--text); }
+
+    /* ===== 全屏 Hero ===== */
+    .hero {
+      min-height: 100vh;
+      display: flex; flex-direction: column;
+      justify-content: center; align-items: center;
+      padding: 24px;
+      text-align: center;
+      position: relative;
+    }
+    .hero-badge {
+      display: inline-block;
+      padding: 6px 16px; border-radius: 100px;
+      font-size: 12px; color: var(--text-soft);
+      background: var(--surface); border: 1px solid var(--border);
+      backdrop-filter: blur(10px);
+      margin-bottom: 32px;
+      opacity: 0; animation: heroFade 0.8s ease 0.2s forwards;
+    }
+    .hero-badge .dot {
+      display: inline-block; width: 6px; height: 6px;
+      border-radius: 50%; background: #4ade80; margin-right: 8px;
+      animation: pulse 2s ease-in-out infinite;
+    }
+    @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }
+
+    .hero h1 {
+      font-size: clamp(48px, 10vw, 96px);
+      font-weight: 800; letter-spacing: -0.05em;
+      margin-bottom: 20px; line-height: 1.1;
+      background: linear-gradient(135deg, #fff 0%, #888 100%);
+      -webkit-background-clip: text; background-clip: text;
+      -webkit-text-fill-color: transparent;
+      opacity: 0; animation: heroFade 1s ease 0.4s forwards;
+    }
+    .hero .tagline {
+      font-size: clamp(20px, 4vw, 28px);
+      color: var(--text-soft); margin-bottom: 8px;
+      opacity: 0; animation: heroFade 0.8s ease 0.8s forwards;
+    }
+    .hero .sub {
+      font-size: clamp(15px, 2vw, 18px);
+      color: var(--text-faint); margin-bottom: 48px;
+      opacity: 0; animation: heroFade 0.8s ease 1s forwards;
+    }
+
+    /* 打字机 */
+    .hero-typed {
+      font-size: clamp(15px, 2vw, 18px);
+      color: var(--accent);
+      min-height: 1.7em;
+      margin-bottom: 48px;
+      opacity: 0; animation: heroFade 0.8s ease 1.2s forwards;
+      font-family: var(--font);
+    }
+    .hero-typed .cursor {
+      display: inline-block; width: 2px; height: 1em;
+      background: var(--accent); margin-left: 2px;
+      vertical-align: text-bottom;
+      animation: blink 0.8s steps(1) infinite;
+    }
+    @keyframes blink { 0%,50% { opacity: 1; } 50.01%,100% { opacity: 0; } }
+
+    .hero-social {
+      display: flex; gap: 12px; justify-content: center; flex-wrap: wrap;
+      opacity: 0; animation: heroFade 0.8s ease 1.4s forwards;
+    }
+    .hero-social a,
+    .hero-social .social-btn {
+      display: inline-flex; align-items: center; gap: 8px;
+      padding: 10px 22px; border-radius: 100px;
+      font-size: 14px; font-weight: 500; text-decoration: none;
+      border: 1px solid var(--border); background: var(--surface);
+      backdrop-filter: blur(10px); color: var(--text);
+      transition: all 0.3s; position: relative; cursor: pointer;
+    }
+    .hero-social a:hover,
+    .hero-social .social-btn:hover {
+      border-color: var(--accent); background: var(--surface-hover);
+      box-shadow: 0 0 20px var(--accent-glow); transform: translateY(-2px);
+    }
+    .hero-social a.primary,
+    .hero-social .social-btn.primary {
+      background: linear-gradient(135deg, var(--accent) 0%, var(--accent-2) 100%);
+      color: #fff; border: none;
+    }
+    .hero-social a.primary:hover { box-shadow: 0 0 30px var(--accent-glow); }
+
+    /* 滚动提示 */
+    .scroll-hint {
+      position: absolute; bottom: 32px; left: 50%;
+      transform: translateX(-50%);
+      color: var(--text-faint); font-size: 12px;
+      letter-spacing: 0.15em; text-transform: uppercase;
+      opacity: 0; animation: heroFade 0.8s ease 1.8s forwards;
+      display: flex; flex-direction: column; align-items: center; gap: 8px;
+    }
+    .scroll-hint .mouse {
+      width: 22px; height: 36px; border: 1.5px solid var(--text-faint);
+      border-radius: 12px; position: relative;
+    }
+    .scroll-hint .mouse::before {
+      content: ''; position: absolute; top: 6px; left: 50%;
+      transform: translateX(-50%);
+      width: 3px; height: 8px; border-radius: 2px; background: var(--text-faint);
+      animation: scrollWheel 1.8s ease-in-out infinite;
+    }
+    @keyframes scrollWheel {
+      0% { opacity: 0; transform: translateX(-50%) translateY(-4px); }
+      50% { opacity: 1; }
+      100% { opacity: 0; transform: translateX(-50%) translateY(8px); }
+    }
+
+    @keyframes heroFade {
+      from { opacity: 0; transform: translateY(20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* ===== 二维码弹出层 ===== */
+    .social-btn { position: relative; }
+    .qr-popup {
+      position: absolute; top: calc(100% + 14px); left: 50%;
+      transform: translateX(-50%) translateY(-6px);
+      background: var(--bg-2); border: 1px solid var(--border-hover);
+      border-radius: 14px; padding: 16px 16px 14px;
+      box-shadow: 0 12px 40px rgba(0,0,0,0.5);
+      text-align: center; white-space: nowrap;
+      opacity: 0; visibility: hidden;
+      transition: opacity 0.25s ease, transform 0.25s ease, visibility 0.25s;
+      z-index: 200;
+    }
+    .qr-popup::before {
+      content: ''; position: absolute; top: -7px; left: 50%;
+      transform: translateX(-50%) rotate(45deg);
+      width: 12px; height: 12px; background: var(--bg-2);
+      border-left: 1px solid var(--border-hover); border-top: 1px solid var(--border-hover);
+    }
+    .social-btn:hover .qr-popup,
+    .social-btn.is-open .qr-popup {
+      opacity: 1; visibility: visible;
+      transform: translateX(-50%) translateY(0);
+    }
+    .qr-popup img {
+      display: block; width: 148px; height: auto; max-height: 220px;
+      border-radius: 10px; object-fit: contain; background: #1a1a25;
+    }
+    .qr-popup .qr-fallback {
+      display: none; width: 148px; height: 180px; border-radius: 10px;
+      background: #1a1a25; flex-direction: column; align-items: center;
+      justify-content: center; gap: 6px; font-size: 12px; color: var(--text-faint); padding: 12px;
+    }
+    .qr-popup .qr-fallback svg { opacity: 0.35; }
+    .qr-popup img.broken ~ .qr-fallback { display: flex; }
+    .qr-popup img.broken { display: none; }
+    .qr-popup p { font-size: 13px; color: var(--text-soft); margin: 10px 0 0; font-weight: 500; }
+
+    /* ===== Section ===== */
+    .section {
+      max-width: 1100px; margin: 0 auto;
+      padding: 80px 24px 40px;
+    }
+    .section-title {
+      font-size: clamp(24px, 4vw, 36px);
+      font-weight: 700; letter-spacing: -0.02em;
+      color: var(--text); margin-bottom: 8px;
+    }
+    .section-sub {
+      font-size: 15px; color: var(--text-faint); margin-bottom: 60px;
+    }
+
+    /* ===== 全宽交替展示行 ===== */
+    .showcase {
+      max-width: 1100px; margin: 0 auto;
+      padding: 0 24px;
+    }
+    .row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 60px;
+      align-items: center;
+      margin-bottom: 100px;
+      text-decoration: none;
+      color: inherit;
+    }
+    .row:last-child { margin-bottom: 40px; }
+    .row:nth-child(even) .row-visual { order: 0; }
+
+    /* 商业解决方案区：左图右字（翻转） */
+    .showcase.business-showcase .row { direction: rtl; }
+    .showcase.business-showcase .row > * { direction: ltr; }
+
+    /* 文字区 */
+    .row-text {
+      padding: 0 10px;
+    }
+    .row-text .row-number {
+      font-size: 13px; font-weight: 600;
+      color: var(--accent); letter-spacing: 0.1em;
+      margin-bottom: 12px;
+    }
+    .row-text h3 {
+      font-size: clamp(24px, 3.5vw, 34px);
+      font-weight: 700; letter-spacing: -0.02em;
+      margin-bottom: 16px; line-height: 1.2;
+    }
+    .row-text p {
+      font-size: 16px; color: var(--text-soft);
+      line-height: 1.7; margin-bottom: 24px;
+    }
+    .row-tags {
+      display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 28px;
+    }
+    .row-tag {
+      font-size: 12px; color: var(--text-faint);
+      padding: 5px 12px; background: var(--surface);
+      border: 1px solid var(--border); border-radius: 100px;
+    }
+    .row-link {
+      display: inline-flex; align-items: center; gap: 6px;
+      font-size: 15px; font-weight: 600; color: var(--text);
+      text-decoration: none;
+      padding: 10px 24px; border-radius: 100px;
+      border: 1px solid var(--border);
+      background: var(--surface);
+      transition: all 0.3s;
+    }
+    .row-link:hover {
+      border-color: var(--accent);
+      background: var(--surface-hover);
+      box-shadow: 0 0 20px var(--accent-glow);
+      gap: 10px;
+    }
+
+    /* 付费行 */
+    .row.paid .row-number { color: #c9a84c; }
+    .row.paid .row-link {
+      border-color: rgba(201,168,76,0.2);
+    }
+    .row.paid .row-link:hover {
+      border-color: #c9a84c;
+      box-shadow: 0 0 20px rgba(201,168,76,0.3);
+    }
+    .row.paid .row-tag {
+      color: #c9a84c;
+      background: rgba(201,168,76,0.08);
+      border-color: rgba(201,168,76,0.2);
+    }
+
+    /* 截图区 */
+    .row-visual {
+      position: relative;
+    }
+    .row-visual img {
+      width: 100%; border-radius: 14px; display: block;
+      border: 1px solid var(--border);
+      transition: transform 0.4s cubic-bezier(0.2,0,0.2,1), box-shadow 0.4s;
+      aspect-ratio: 16/10; object-fit: cover; object-position: center top;
+      background: #1a1a25;
+    }
+    .row:hover .row-visual img {
+      transform: scale(1.02);
+      box-shadow: 0 20px 50px rgba(0,0,0,0.4), 0 0 30px rgba(124,92,252,0.1);
+    }
+    .row.paid:hover .row-visual img {
+      box-shadow: 0 20px 50px rgba(0,0,0,0.4), 0 0 30px rgba(201,168,76,0.1);
+    }
+
+    /* 入场动画 */
+    .row.reveal {
+      opacity: 0; transform: translateY(50px);
+      transition: opacity 0.8s ease, transform 0.8s cubic-bezier(0.2,0,0.2,1);
+    }
+    .row.reveal.visible { opacity: 1; transform: translateY(0); }
+
+    /* 案例区小卡片 */
+    .cases-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+      gap: 20px;
+    }
+    .case-card {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--radius); overflow: hidden;
+      text-decoration: none; color: inherit;
+      transition: transform 0.3s, box-shadow 0.3s, border-color 0.3s;
+      display: flex; flex-direction: column;
+    }
+    .case-card:hover {
+      transform: translateY(-4px); border-color: var(--border-hover);
+      box-shadow: 0 16px 40px rgba(0,0,0,0.3);
+    }
+    .case-card img {
+      width: 100%; aspect-ratio: 16/9; object-fit: cover; object-position: center top;
+      background: #1a1a25;
+    }
+    .case-card .case-body { padding: 20px; }
+    .case-card .case-body h4 {
+      font-size: 17px; font-weight: 600; margin-bottom: 8px;
+    }
+    .case-card .case-body p {
+      font-size: 13px; color: var(--text-soft); line-height: 1.5;
+    }
+    .case-card .case-body .case-tags {
+      display: flex; gap: 6px; margin-top: 12px;
+    }
+    .case-card .case-body .case-tag {
+      font-size: 11px; color: var(--text-faint);
+      padding: 3px 8px; background: rgba(255,255,255,0.05);
+      border-radius: 100px; border: 1px solid var(--border);
+    }
+    .case-card.reveal {
+      opacity: 0; transform: translateY(30px);
+      transition: opacity 0.6s, transform 0.6s;
+    }
+    .case-card.reveal.visible { opacity: 1; transform: translateY(0); }
+
+    /* 占位卡片 */
+    .case-placeholder {
+      border-style: dashed; opacity: 0.4; cursor: default;
+    }
+    .case-placeholder:hover { transform: none; box-shadow: none; }
+
+    /* ===== Footer ===== */
+    footer {
+      border-top: 1px solid var(--border); padding: 40px 24px;
+      text-align: center; position: relative; z-index: 2;
+    }
+    footer p { font-size: 13px; color: var(--text-faint); }
+
+    /* ===== 响应式 ===== */
+    @media (max-width: 768px) {
+      .row {
+        grid-template-columns: 1fr;
+        gap: 30px;
+        margin-bottom: 70px;
+      }
+      .row:nth-child(even) .row-visual { order: 0; }
+      .showcase.business-showcase .row { direction: ltr; }
+      .row-text { padding: 0; }
+    }
+    @media (max-width: 600px) {
+      .hero { min-height: 100vh; }
+      .nav-links { gap: 16px; }
+      .nav-links a:not(.gh-icon) { display: none; }
+      .qr-popup {
+        top: auto; bottom: calc(100% + 14px);
+        transform: translateX(-50%) translateY(6px);
+      }
+      .qr-popup::before {
+        top: auto; bottom: -7px; border: none;
+        border-right: 1px solid var(--border-hover); border-bottom: 1px solid var(--border-hover);
+      }
+      .social-btn:hover .qr-popup,
+      .social-btn.is-open .qr-popup {
+        transform: translateX(-50%) translateY(0);
+      }
+    }
+  </style>
+</head>
+<body>
+
+<!-- 背景层 -->
+<canvas id="bgCanvas"></canvas>
+<div class="bg-noise"></div>
+
+<div class="content">
+
+<!-- 导航（滚动后出现） -->
+<nav id="navbar">
+  <div class="nav-inner">
+    <div class="nav-name"><a href="index.html">爱看书的YY</a></div>
+    <div class="nav-links">
+      <a href="#work">作品</a>
+      <a href="#business">商业方案</a>
+      <a href="#cases">案例</a>
+      <a href="https://github.com/adams914" target="_blank" rel="noopener" class="gh-icon">GitHub</a>
+    </div>
+  </div>
+</nav>
+
+<!-- 全屏 Hero -->
+<section class="hero">
+  <div class="hero-badge">
+    <span class="dot"></span>可接商单 · 独立开发
+  </div>
+  <h1>爱看书的YY</h1>
+  <p class="tagline">AI 独立开发者</p>
+  <p class="sub">用 AI 造工具，也写历史。</p>
+
+  <div class="hero-typed" id="typed">
+    <span id="typedText"></span><span class="cursor"></span>
+  </div>
+
+  <div class="hero-social">
+    <a href="https://github.com/adams914" target="_blank" rel="noopener" class="primary">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 .297c-6.63 0-12 5.373-12 12 0 5.303 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23A11.509 11.509 0 0112 5.803c1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222 0 1.606-.014 2.898-.014 3.293 0 .322.216.694.825.576C20.565 22.092 24 17.592 24 12.297c0-6.627-5.373-12-12-12"/></svg>
+      GitHub
+    </a>
+    <span class="social-btn" tabindex="0">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M8.691 2.188C3.891 2.188 0 5.476 0 9.53c0 2.212 1.17 4.203 3.002 5.55a.59.59 0 0 1 .213.665l-.39 1.48c-.019.07-.048.141-.048.213 0 .163.13.295.29.295a.326.326 0 0 0 .167-.054l1.903-1.114a.864.864 0 0 1 .717-.098 10.16 10.16 0 0 0 2.837.403c.276 0 .543-.027.811-.05-.857-2.578.157-4.972 1.932-6.446 1.703-1.415 3.882-1.98 5.853-1.838-.576-3.583-4.196-6.348-8.596-6.348zM5.785 5.991c.642 0 1.162.529 1.162 1.18a1.17 1.17 0 0 1-1.162 1.178A1.17 1.17 0 0 1 4.623 7.17c0-.651.52-1.18 1.162-1.18zm5.813 0c.642 0 1.162.529 1.162 1.18a1.17 1.17 0 0 1-1.162 1.178 1.17 1.17 0 0 1-1.162-1.178c0-.651.52-1.18 1.162-1.18zm5.34 2.867c-1.797-.052-3.746.512-5.28 1.786-1.72 1.428-2.687 3.72-1.78 6.22.942 2.453 3.666 4.229 6.884 4.229.826 0 1.622-.12 2.361-.336a.722.722 0 0 1 .598.082l1.584.926a.272.272 0 0 0 .14.047c.134 0 .24-.111.24-.247 0-.06-.023-.12-.038-.177l-.327-1.233a.582.582 0 0 1-.023-.156.49.49 0 0 1 .201-.398C23.024 18.48 24 16.82 24 14.98c0-3.21-2.931-5.837-6.656-6.088V8.89c-.135-.01-.27-.027-.407-.03zm-2.53 3.274c.535 0 .969.44.969.982a.976.976 0 0 1-.969.983.976.976 0 0 1-.969-.983c0-.542.434-.982.97-.982zm4.844 0c.535 0 .969.44.969.982a.976.976 0 0 1-.969.983.976.976 0 0 1-.969-.983c0-.542.434-.982.969-.982z"/></svg>
+      微信公众号
+      <div class="qr-popup">
+        <img src="assets/qrcode-wechat.jpg" alt="微信公众号二维码" onerror="this.classList.add('broken')">
+        <div class="qr-fallback">
+          <svg width="40" height="40" viewBox="0 0 24 24" fill="currentColor"><path d="M3 3h7v7H3V3zm2 2v3h3V5H5zm9-2h7v7h-7V3zm2 2v3h3V5h-3zM3 14h7v7H3v-7zm2 2v3h3v-3H5zm9-2h2v2h-2v-2zm4 0h3v3h-2v-1h-1v-2zm-4 4h2v3h-2v-3zm4 0h1v2h2v1h-3v-3z"/></svg>
+          <span>放入<br>assets/qrcode-wechat.jpg</span>
+        </div>
+        <p>扫码关注公众号</p>
+      </div>
+    </span>
+    <span class="social-btn" tabindex="0">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M22.405 9.879c.002.016.01.02.07.019h.725a.797.797 0 0 0 .78-.972.794.794 0 0 0-.884-.618.795.795 0 0 0-.692.794c0 .101-.002.666.001.777zm-11.509 4.808c-.203.001-1.353.004-1.685.003a2.528 2.528 0 0 1-.766-.126.025.025 0 0 0-.03.014L7.7 16.127a.025.025 0 0 0 .01.032c.111.06.336.124.495.124.66.01 1.32.002 1.981 0 .01 0 .02-.006.023-.015l.712-1.545a.025.025 0 0 0-.024-.036zM.477 9.91c-.071 0-.076.002-.076.01a.834.834 0 0 0-.01.08c-.027.397-.038.495-.234 3.06-.012.24-.034.389-.135.607-.026.057-.033.042.003.112.046.092.681 1.523.787 1.74.008.015.011.02.017.02.008 0 .033-.026.047-.044.147-.187.268-.391.371-.606.306-.635.44-1.325.486-1.706.014-.11.021-.22.03-.33l.204-2.616.022-.293c.003-.029 0-.033-.03-.034zm7.203 3.757a1.427 1.427 0 0 1-.135-.607c-.004-.084-.031-.39-.235-3.06a.443.443 0 0 0-.01-.082c-.004-.011-.052-.008-.076-.008h-1.48c-.03.001-.034.005-.03.034l.021.293c.076.982.153 1.964.233 2.946.05.4.186 1.085.487 1.706.103.215.223.419.37.606.015.018.037.051.048.049.02-.003.742-1.642.804-1.765.036-.07.03-.055.003-.112zm3.861-.913h-.872a.126.126 0 0 1-.116-.178l1.178-2.625a.025.025 0 0 0-.023-.035l-1.318-.003a.148.148 0 0 1-.135-.21l.876-1.954a.025.025 0 0 0-.023-.035h-1.56c-.01 0-.02.006-.024.015l-.926 2.068c-.085.169-.314.634-.399.938a.534.534 0 0 0-.02.191.46.46 0 0 0 .23.378.981.981 0 0 0 .46.119h.59c.041 0-.688 1.482-.834 1.972a.53.53 0 0 0-.023.172.465.465 0 0 0 .23.398c.15.092.342.12.475.12l1.66-.001c.01 0 .02-.006.023-.015l.575-1.28a.025.025 0 0 0-.024-.035zm-6.93-4.937H3.1a.032.032 0 0 0-.034.033c0 1.048-.01 2.795-.01 6.829 0 .288-.269.262-.28.262h-.74c-.04.001-.044.004-.04.047.001.037.465 1.064.555 1.263.01.02.03.033.051.033.157.003.767.009.938-.014.153-.02.3-.06.438-.132.3-.156.49-.419.595-.765.052-.172.075-.353.075-.533.002-2.33 0-4.66-.007-6.991a.032.032 0 0 0-.032-.032zm11.784 6.896c0-.014-.01-.021-.024-.022h-1.465c-.048-.001-.049-.002-.05-.049v-4.66c0-.072-.005-.07.07-.07h.863c.08 0 .075.004.075-.074V8.393c0-.082.006-.076-.08-.076h-3.5c-.064 0-.075-.006-.075.073v1.445c0 .083-.006.077.08.077h.854c.075 0 .07-.004.07.07v4.624c0 .095.008.084-.085.084-.37 0-1.11-.002-1.304 0-.048.001-.06.03-.06.03l-.697 1.519s-.014.025-.008.036c.006.01.013.008.058.008 1.748.003 3.495.002 5.243.002.03-.001.034-.006.035-.033v-1.539zm4.177-3.43c0 .013-.007.023-.02.024-.346.006-.692.004-1.037.004-.014-.002-.022-.01-.022-.024-.005-.434-.007-.869-.01-1.303 0-.072-.006-.071.07-.07l.733-.003c.041 0 .081.002.12.015.093.025.16.107.165.204.006.431.002 1.153.001 1.153zm2.67.244a1.953 1.953 0 0 0-.883-.222h-.18c-.04-.001-.04-.003-.042-.04V10.21c0-.132-.007-.263-.025-.394a1.823 1.823 0 0 0-.153-.53 1.533 1.533 0 0 0-.677-.71 2.167 2.167 0 0 0-1-.258c-.153-.003-.567 0-.72 0-.07 0-.068.004-.068-.065V7.76c0-.031-.01-.041-.046-.039H17.93s-.016 0-.023.007c-.006.006-.008.012-.008.023v.546c-.008.036-.057.015-.082.022h-.95c-.022.002-.028.008-.03.032v1.481c0 .09-.004.082.082.082h.913c.082 0 .072.128.072.128V11.19s.003.117-.06.117h-1.482c-.068 0-.06.082-.06.082v1.445s-.01.068.064.068h1.457c.082 0 .076-.006.076.079v3.225c0 .088-.007.081.082.081h1.43c.09 0 .082.007.082-.08v-3.27c0-.029.006-.035.033-.035l2.323-.003c.098 0 .191.02.28.061a.46.46 0 0 1 .274.407c.008.395.003.79.003 1.185 0 .259-.107.367-.33.367h-1.218c-.023.002-.029.008-.028.033.184.437.374.871.57 1.303a.045.045 0 0 0 .04.026c.17.005.34.002.51.003.15-.002.517.004.666-.01a2.03 2.03 0 0 0 .408-.075c.59-.18.975-.698.976-1.313v-1.981c0-.128-.01-.254-.034-.38 0 .078-.029-.641-.724-.998z"/></svg>
+      小红书
+      <div class="qr-popup">
+        <img src="assets/qrcode-xiaohongshu.jpg" alt="小红书二维码" onerror="this.classList.add('broken')">
+        <div class="qr-fallback">
+          <svg width="40" height="40" viewBox="0 0 24 24" fill="currentColor"><path d="M3 3h7v7H3V3zm2 2v3h3V5H5zm9-2h7v7h-7V3zm2 2v3h3V5h-3zM3 14h7v7H3v-7zm2 2v3h3v-3H5zm9-2h2v2h-2v-2zm4 0h3v3h-2v-1h-1v-2zm-4 4h2v3h-2v-3zm4 0h1v2h2v1h-3v-3z"/></svg>
+          <span>放入<br>assets/qrcode-xiaohongshu.jpg</span>
+        </div>
+        <p>扫码看小红书</p>
+      </div>
+    </span>
+  </div>
+
+  <!-- 滚动提示 -->
+  <div class="scroll-hint">
+    <div class="mouse"></div>
+    <span>Scroll</span>
+  </div>
+</section>
+
+<!-- 免费作品 -->
+<section class="section" id="work">
+  <h2 class="section-title">免费作品</h2>
+  <p class="section-sub">独立开发的桌面工具与内容项目，全部免费使用。</p>
+</section>
+
+<div class="showcase">
+
+  <!-- 好找 -->
+  <a class="row reveal" href="haozhao.html">
+    <div class="row-text">
+      <div class="row-number">01 — 桌面应用</div>
+      <h3>好找 v2.0</h3>
+      <p>本地优先的智能文档管理工具。把散落各处的 PDF、Word、PPT、Excel 统一管理——AI 帮你批量整理，搜索秒级找到。几千个文件也能轻松驾驭。</p>
+      <div class="row-tags">
+        <span class="row-tag">PDF / Word / PPT / Excel</span>
+        <span class="row-tag">AI 批量整理</span>
+        <span class="row-tag">OCR 扫描件</span>
+      </div>
+      <span class="row-link">了解详情 →</span>
+    </div>
+    <div class="row-visual">
+      <img src="assets/screenshots/haozhao-01-main.png" alt="好找">
+    </div>
+  </a>
+
+  <!-- Flowstate -->
+  <a class="row reveal" href="flowstate.html">
+    <div class="row-text">
+      <div class="row-number">02 — 桌面应用</div>
+      <h3>Flowstate</h3>
+      <p>严格遵循 GTD 方法论的桌面时间管理工具。收件箱、下一步行动、项目、等待中、日历——完整 GTD 工作流。数据 100% 本地存储，永久免费，无需账号。</p>
+      <div class="row-tags">
+        <span class="row-tag">GTD 方法论</span>
+        <span class="row-tag">本地存储</span>
+        <span class="row-tag">离线可用</span>
+      </div>
+      <span class="row-link">了解详情 →</span>
+    </div>
+    <div class="row-visual">
+      <img src="assets/screenshots/flowstate-01-main.png" alt="Flowstate">
+    </div>
+  </a>
+
+  <!-- 好记 -->
+  <a class="row reveal" href="haomark.html">
+    <div class="row-text">
+      <div class="row-number">03 — 桌面应用</div>
+      <h3>好记 HaoMark</h3>
+      <p>轻量、快速、实时渲染的 Markdown 编辑器。v2.1 Notion 柔和风 UI 重设计，多标签页、设置面板、CodeMirror 语法树渲染。4.9MB 安装包，.md 文件双击秒开。</p>
+      <div class="row-tags">
+        <span class="row-tag">实时渲染</span>
+        <span class="row-tag">多标签页</span>
+        <span class="row-tag">Notion 风 UI</span>
+        <span class="row-tag">4.9MB</span>
+      </div>
+      <span class="row-link">了解详情 →</span>
+    </div>
+    <div class="row-visual">
+      <img src="assets/screenshots/haomark-01-main.png" alt="好记">
+    </div>
+  </a>
+
+  <!-- 五代十国 -->
+  <a class="row reveal" href="wudai.html">
+    <div class="row-text">
+      <div class="row-number">04 — 历史网站</div>
+      <h3>五代十国 · 章回史话</h3>
+      <p>一部可阅读的章回体电子书，讲述公元 907—979 年五代十国的历史。楔子 + 十七回 + 尾声，71 位历史人物传记，三向交叉引用，统一水墨风格插图。</p>
+      <div class="row-tags">
+        <span class="row-tag">章回体叙事</span>
+        <span class="row-tag">71 位人物</span>
+        <span class="row-tag">水墨风</span>
+      </div>
+      <span class="row-link">访问网站 →</span>
+    </div>
+    <div class="row-visual">
+      <img src="assets/screenshots/wudai-hero.jpg" alt="五代十国" style="object-position: center 40%;">
+    </div>
+  </a>
+
+  <!-- Galgame -->
+  <a class="row reveal" href="galgame.html">
+    <div class="row-text">
+      <div class="row-number">05 — 视觉小说 · 测试中</div>
+      <h3>兴教门之变</h3>
+      <p>五代十国视觉小说。扮演"长乐老"冯道，以第一人称亲历公元 882—954 的乱世，历事后唐、后晋、后汉、后周四朝十君。精美立绘 + 背景 CG，多重选择肢。</p>
+      <div class="row-tags">
+        <span class="row-tag">七卷完整剧情</span>
+        <span class="row-tag">多重选择</span>
+        <span class="row-tag" style="color: #b88500; border-color: rgba(184,133,0,0.3);">测试中</span>
+      </div>
+      <span class="row-link">了解详情 →</span>
+    </div>
+    <div class="row-visual">
+      <img src="assets/screenshots/05_游戏_标题画面.png" alt="兴教门之变">
+    </div>
+  </a>
+
+</div>
+
+<!-- 商业解决方案 -->
+<section class="section" id="business">
+  <h2 class="section-title">商业解决方案</h2>
+  <p class="section-sub">企业级系统开发，支持定制化部署。点击咨询获取方案。</p>
+</section>
+
+<div class="showcase business-showcase">
+
+  <!-- 回款管理 -->
+  <a class="row paid reveal" href="huikuan.html">
+    <div class="row-text">
+      <div class="row-number">01 — 企业系统</div>
+      <h3>归款 · 回款管理</h3>
+      <p>应收账款催收跟踪系统。以发票为主表，跟踪每张发票从开票到全额回款的到期、催收、到账全过程。到期提醒、催收任务、到账核销、报表看板，局域网部署。</p>
+      <div class="row-tags">
+        <span class="row-tag">发票生命周期</span>
+        <span class="row-tag">催收任务</span>
+        <span class="row-tag">报表看板</span>
+      </div>
+      <span class="row-link">咨询购买 →</span>
+    </div>
+    <div class="row-visual">
+      <img src="assets/screenshots/huikuan-01-dashboard.png" alt="归款">
+    </div>
+  </a>
+
+  <!-- 合同管理 -->
+  <a class="row paid reveal" href="hetong.html">
+    <div class="row-text">
+      <div class="row-number">02 — 企业系统</div>
+      <h3>CMS · 合同管理</h3>
+      <p>扫描件丢入热文件夹，OCR + LLM 自动入库。单一搜索框，自然语言查询——"去年和甲方签的合同"、"快到期的"，一搜就出来。合同条款一键提取。</p>
+      <div class="row-tags">
+        <span class="row-tag">OCR 自动入库</span>
+        <span class="row-tag">自然语言搜索</span>
+        <span class="row-tag">LLM 条款提取</span>
+      </div>
+      <span class="row-link">咨询购买 →</span>
+    </div>
+    <div class="row-visual">
+      <img src="assets/screenshots/hetong-01-dashboard.png" alt="合同管理">
+    </div>
+  </a>
+
+  <!-- TMS -->
+  <a class="row paid reveal" href="tms.html">
+    <div class="row-text">
+      <div class="row-number">03 — 企业系统</div>
+      <h3>TMS · 运输管理</h3>
+      <p>面向公路运输企业的全链路运输管理系统。订单→合并发运→运单调度→在途跟踪→回单→结算开票→异常处理，全闭环。多租户架构，16 项权限控制，7 种报表。</p>
+      <div class="row-tags">
+        <span class="row-tag">全链路闭环</span>
+        <span class="row-tag">多租户</span>
+        <span class="row-tag">7 种报表</span>
+      </div>
+      <span class="row-link">咨询购买 →</span>
+    </div>
+    <div class="row-visual">
+      <img src="assets/screenshots/tms-01-dashboard.png" alt="TMS">
+    </div>
+  </a>
+
+  <!-- AI 研讨会 -->
+  <a class="row paid reveal" href="workshop.html">
+    <div class="row-text">
+      <div class="row-number">04 — 企业系统</div>
+      <h3>WorkshopOS · AI 多专家研讨会</h3>
+      <p>输入一个议题 + N 个 AI 专家配置，自动进行多轮深度研讨——主持人开场、专家发言、共识/分歧提炼、投票表决、生成结构化纪要。支持混合多个大模型，本地部署。</p>
+      <div class="row-tags">
+        <span class="row-tag">多轮深度研讨</span>
+        <span class="row-tag">多模型混搭</span>
+        <span class="row-tag">结构化纪要</span>
+      </div>
+      <span class="row-link">咨询购买 →</span>
+    </div>
+    <div class="row-visual">
+      <img src="assets/screenshots/workshop-01-main.png" alt="AI 研讨会">
+    </div>
+  </a>
+
+</div>
+
+<!-- 案例展示 -->
+<section class="section" id="cases">
+  <h2 class="section-title">案例展示</h2>
+  <p class="section-sub">PPT、海报、短视频、内容作品——做了什么就放什么。</p>
+  <div class="cases-grid">
+
+    <a class="case-card reveal" href="yulianda.html">
+      <img src="assets/yulianda/yulianda_01.png" alt="渝联达 PPT">
+      <div class="case-body">
+        <h4>渝联达 · 企业演示 PPT</h4>
+        <p>企业全链路演示文稿，4K 高清 21 页。从公司介绍到业务架构，完整展示 PPT 设计能力。</p>
+        <div class="case-tags">
+          <span class="case-tag">PPT</span>
+          <span class="case-tag">21 页 · 4K</span>
+        </div>
+      </div>
+    </a>
+
+    <a class="case-card reveal" href="posters.html">
+      <img src="assets/post/yulianda-post.png" alt="宣传海报">
+      <div class="case-body">
+        <h4>政企风宣传海报</h4>
+        <p>3 张县域物流主题海报：项目主题、企业品牌、政策响应。深蓝配金色，政企汇报质感。</p>
+        <div class="case-tags">
+          <span class="case-tag">海报</span>
+          <span class="case-tag">3 张 · A3</span>
+        </div>
+      </div>
+    </a>
+
+    <a class="case-card reveal" href="video.html">
+      <img src="assets/screenshots/video-cover.png" alt="文章→视频化网页">
+      <div class="case-body">
+        <h4>文章 → 视频化网页</h4>
+        <p>输入一篇文章，输出全视口视频化网页演示。每步独占整屏 + 内容驱动动画 + TTS 配音。</p>
+        <div class="case-tags">
+          <span class="case-tag">视频</span>
+          <span class="case-tag">内容服务</span>
+        </div>
+      </div>
+    </a>
+
+    <a class="case-card reveal" href="video2.html">
+      <img src="assets/screenshots/video2-cover.png" alt="企业品牌宣传视频">
+      <div class="case-body">
+        <h4>企业品牌宣传视频</h4>
+        <p>从公司介绍到业务架构，视频化呈现企业价值。适合品牌宣传、政企汇报、展会招商。</p>
+        <div class="case-tags">
+          <span class="case-tag">视频</span>
+          <span class="case-tag">企业宣传</span>
+        </div>
+      </div>
+    </a>
+
+  </div>
+</section>
+
+<footer>
+  <p>© 2026 爱看书的YY · 用 AI 造工具，也写历史。</p>
+</footer>
+
+</div>
+
+<script>
+  // ===== Canvas 流动渐变网格 =====
+  (function() {
+    const canvas = document.getElementById('bgCanvas');
+    const ctx = canvas.getContext('2d');
+    let w, h, dpr, time = 0;
+    let mouseX = 0.5, mouseY = 0.5;
+
+    function resize() {
+      dpr = Math.min(window.devicePixelRatio || 1, 2);
+      w = window.innerWidth;
+      h = window.innerHeight;
+      canvas.width = w * dpr;
+      canvas.height = h * dpr;
+      canvas.style.width = w + 'px';
+      canvas.style.height = h + 'px';
+      ctx.scale(dpr, dpr);
+    }
+    resize();
+    window.addEventListener('resize', resize);
+
+    // 鼠标位置（平滑跟随）
+    let tmx = 0.5, tmy = 0.5;
+    window.addEventListener('mousemove', e => {
+      tmx = e.clientX / w;
+      tmy = e.clientY / h;
+    }, { passive: true });
+
+    // 颜色组（紫蓝青系）
+    const colors = [
+      { r: 124, g: 92, b: 252 },  // 紫
+      { r: 0, g: 212, b: 255 },   // 青
+      { r: 255, g: 107, b: 157 }, // 粉
+    ];
+
+    function draw() {
+      time += 0.003;
+
+      // 鼠标缓动
+      mouseX += (tmx - mouseX) * 0.02;
+      mouseY += (tmy - mouseY) * 0.02;
+
+      // 清空（半透明覆盖产生拖尾）
+      ctx.fillStyle = 'rgba(10,10,15,0.15)';
+      ctx.fillRect(0, 0, w, h);
+
+      // 三个流动光球（渐变径向）
+      for (let i = 0; i < 3; i++) {
+        const c = colors[i];
+        const phase = time + i * 2.1;
+        const cx = w * (0.5 + 0.35 * Math.sin(phase * 0.8 + i * 1.5) + (mouseX - 0.5) * 0.15);
+        const cy = h * (0.5 + 0.35 * Math.cos(phase * 0.6 + i * 2) + (mouseY - 0.5) * 0.15);
+        const radius = Math.max(50, Math.min(w, h) * (0.3 + 0.08 * Math.sin(phase)));
+
+        const grad = ctx.createRadialGradient(cx, cy, 0, cx, cy, radius);
+        grad.addColorStop(0, `rgba(${c.r},${c.g},${c.b},0.18)`);
+        grad.addColorStop(0.5, `rgba(${c.r},${c.g},${c.b},0.05)`);
+        grad.addColorStop(1, `rgba(${c.r},${c.g},${c.b},0)`);
+
+        ctx.fillStyle = grad;
+        ctx.fillRect(0, 0, w, h);
+      }
+
+      // 鼠标附近粒子（不画网格线，只保留光点）
+      const gridSize = 70;
+      const offsetX = (time * 15) % gridSize;
+      const offsetY = (time * 10) % gridSize;
+
+      for (let x = -gridSize + offsetX; x < w + gridSize; x += gridSize) {
+        for (let y = -gridSize + offsetY; y < h + gridSize; y += gridSize) {
+          const dx = x / w - mouseX;
+          const dy = y / h - mouseY;
+          const dist = Math.sqrt(dx * dx + dy * dy);
+          if (dist < 0.18) {
+            const alpha = (0.18 - dist) * 1.8;
+            const size = (0.18 - dist) * 3;
+            ctx.fillStyle = `rgba(124,92,252,${alpha})`;
+            ctx.beginPath();
+            ctx.arc(x, y, Math.max(0.5, size), 0, Math.PI * 2);
+            ctx.fill();
+          }
+        }
+      }
+
+      requestAnimationFrame(draw);
+    }
+
+    // 页面不可见时暂停（省电）
+    let visible = true;
+    document.addEventListener('visibilitychange', () => {
+      visible = !document.hidden;
+      if (visible) requestAnimationFrame(draw);
+    });
+
+    // 只在第一屏附近渲染（滚动远了停掉省性能）
+    let inViewport = true;
+    window.addEventListener('scroll', () => {
+      const wasInViewport = inViewport;
+      inViewport = window.scrollY < window.innerHeight * 1.5;
+      if (inViewport && !wasInViewport) requestAnimationFrame(draw);
+    }, { passive: true });
+
+    draw();
+  })();
+
+  // ===== 打字机效果 =====
+  (function() {
+    const el = document.getElementById('typedText');
+    const lines = [
+      '> 5 个免费工具 + 3 个商业系统',
+      '> 用 AI 造工具，也写历史',
+      '> 可接 skill / agent / 软文商单'
+    ];
+    let li = 0, ci = 0, deleting = false;
+    function type() {
+      const cur = lines[li];
+      if (!deleting) {
+        el.textContent = cur.slice(0, ci + 1);
+        ci++;
+        if (ci >= cur.length) {
+          deleting = true;
+          setTimeout(type, 2200);
+          return;
+        }
+        setTimeout(type, 45 + (Math.random() < 0.15 ? 120 : 0));
+      } else {
+        el.textContent = cur.slice(0, ci - 1);
+        ci--;
+        if (ci <= 0) {
+          deleting = false;
+          li = (li + 1) % lines.length;
+          setTimeout(type, 400);
+          return;
+        }
+        setTimeout(type, 25);
+      }
+    }
+    setTimeout(type, 1600);
+  })();
+
+  // ===== 导航栏滚动出现 =====
+  const navbar = document.getElementById('navbar');
+  window.addEventListener('scroll', () => {
+    if (window.scrollY > window.innerHeight * 0.6) {
+      navbar.classList.add('visible');
+    } else {
+      navbar.classList.remove('visible');
+    }
+  }, { passive: true });
+
+  // ===== 卡片光晕跟随鼠标（案例小卡片） =====
+  document.querySelectorAll('.case-card').forEach(card => {
+    card.addEventListener('mousemove', e => {
+      const r = card.getBoundingClientRect();
+      card.style.setProperty('--mx', ((e.clientX - r.left) / r.width * 100) + '%');
+      card.style.setProperty('--my', ((e.clientY - r.top) / r.height * 100) + '%');
+    });
+  });
+
+  // ===== 滚动入场动画 =====
+  const observer = new IntersectionObserver(entries => {
+    entries.forEach((entry, i) => {
+      if (entry.isIntersecting) {
+        setTimeout(() => entry.target.classList.add('visible'), i * 100);
+        observer.unobserve(entry.target);
+      }
+    });
+  }, { threshold: 0.15 });
+  document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
+
+  // ===== 移动端二维码 =====
+  if ('ontouchstart' in window) {
+    document.querySelectorAll('.social-btn').forEach(btn => {
+      btn.addEventListener('click', e => {
+        e.preventDefault();
+        document.querySelectorAll('.social-btn.is-open').forEach(b => {
+          if (b !== btn) b.classList.remove('is-open');
+        });
+        btn.classList.toggle('is-open');
+      });
+    });
+    document.addEventListener('click', e => {
+      if (!e.target.closest('.social-btn')) {
+        document.querySelectorAll('.social-btn.is-open').forEach(b => b.classList.remove('is-open'));
+      }
+    });
+  }
+</script>
+</body>
+</html>

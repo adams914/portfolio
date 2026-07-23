@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>政企风宣传海报 · 爱看书的YY</title>
+  <meta name="description" content="3 张政企风宣传海报设计：项目主题、企业品牌、政策响应。">
+  <link rel="icon" href="assets/haomark.png" type="image/png">
+  <style>
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+    html { -webkit-font-smoothing: antialiased; }
+
+    :root {
+      --bg: #0a0a0f;
+      --bg-2: #12121a;
+      --surface: rgba(255,255,255,0.03);
+      --text: #f0f0f5;
+      --text-soft: #a0a0b0;
+      --text-faint: #606070;
+      --border: rgba(255,255,255,0.08);
+      --border-hover: rgba(255,255,255,0.15);
+      --accent: #7c5cfc;
+      --accent-glow: rgba(124,92,252,0.4);
+      --radius: 16px;
+      --font: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans SC", sans-serif;
+    }
+
+    body {
+      font-family: var(--font);
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.7;
+      overflow-x: hidden;
+    }
+
+    .bg-orbs { position: fixed; inset: 0; z-index: 0; overflow: hidden; pointer-events: none; }
+    .orb {
+      position: absolute; border-radius: 50%; filter: blur(100px); opacity: 0.12;
+      animation: orbFloat 20s ease-in-out infinite;
+    }
+    .orb-1 { width: 500px; height: 500px; background: var(--accent); top: -100px; left: -100px; }
+    .orb-2 { width: 400px; height: 400px; background: #d9a441; bottom: -100px; right: -100px; animation-delay: -5s; }
+    @keyframes orbFloat {
+      0%,100% { transform: translate(0,0) scale(1); }
+      50% { transform: translate(40px,-30px) scale(1.1); }
+    }
+
+    nav {
+      position: sticky; top: 0; z-index: 100;
+      background: rgba(10,10,15,0.8);
+      backdrop-filter: blur(20px) saturate(1.5);
+      -webkit-backdrop-filter: blur(20px) saturate(1.5);
+      border-bottom: 1px solid var(--border);
+    }
+    .nav-inner {
+      max-width: 960px; margin: 0 auto;
+      padding: 16px 24px;
+      display: flex; justify-content: space-between; align-items: center;
+    }
+    .nav-back {
+      color: var(--text-soft); text-decoration: none; font-size: 14px;
+      display: inline-flex; align-items: center; gap: 6px; transition: color 0.2s;
+    }
+    .nav-back:hover { color: var(--text); }
+    .nav-title { font-size: 14px; font-weight: 600; color: var(--text-soft); }
+
+    .content { position: relative; z-index: 2; }
+
+    .header {
+      max-width: 960px; margin: 0 auto;
+      padding: 60px 24px 50px; text-align: center;
+    }
+    .header h1 {
+      font-size: clamp(28px, 5vw, 42px); font-weight: 700;
+      letter-spacing: -0.03em; margin-bottom: 12px;
+      background: linear-gradient(135deg, #fff 0%, #888 100%);
+      -webkit-background-clip: text; background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    .header p { color: var(--text-soft); font-size: 16px; }
+    .header .tags {
+      display: flex; gap: 8px; justify-content: center; margin-top: 16px; flex-wrap: wrap;
+    }
+    .header .tag {
+      font-size: 12px; color: var(--text-faint);
+      padding: 4px 12px; background: var(--surface);
+      border: 1px solid var(--border); border-radius: 100px;
+    }
+
+    /* 海报网格 */
+    .posters {
+      max-width: 960px; margin: 0 auto;
+      padding: 0 24px 80px;
+    }
+    .posters-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 20px;
+    }
+    .poster-card {
+      border-radius: 12px; overflow: hidden;
+      border: 1px solid var(--border);
+      background: var(--surface);
+      transition: transform 0.3s cubic-bezier(0.2,0,0.2,1), box-shadow 0.3s, border-color 0.3s;
+      cursor: pointer;
+      position: relative;
+    }
+    .poster-card::before {
+      content: ''; position: absolute; inset: 0; border-radius: 12px;
+      background: radial-gradient(circle at var(--mx,50%) var(--my,50%), rgba(217,164,65,0.1) 0%, transparent 60%);
+      opacity: 0; transition: opacity 0.3s; pointer-events: none; z-index: 1;
+    }
+    .poster-card:hover::before { opacity: 1; }
+    .poster-card:hover {
+      transform: translateY(-6px);
+      border-color: rgba(217,164,65,0.3);
+      box-shadow: 0 20px 40px rgba(0,0,0,0.3), 0 0 30px rgba(217,164,65,0.08);
+    }
+    .poster-card img {
+      width: 100%; display: block;
+      transition: transform 0.4s;
+    }
+    .poster-card:hover img { transform: scale(1.03); }
+    .poster-card .poster-label {
+      padding: 14px 18px;
+      border-top: 1px solid var(--border);
+      position: relative; z-index: 2;
+    }
+    .poster-card .poster-label .title {
+      font-size: 14px; font-weight: 600; color: var(--text); margin-bottom: 4px;
+    }
+    .poster-card .poster-label .desc {
+      font-size: 12px; color: var(--text-faint);
+    }
+
+    /* 灯箱 */
+    .lightbox {
+      position: fixed; inset: 0; z-index: 999;
+      background: rgba(0,0,0,0.92);
+      backdrop-filter: blur(8px);
+      display: flex; align-items: center; justify-content: center;
+      padding: 40px;
+      opacity: 0; visibility: hidden;
+      transition: opacity 0.3s, visibility 0.3s;
+    }
+    .lightbox.open { opacity: 1; visibility: visible; }
+    .lightbox img {
+      max-width: 100%; max-height: 90vh;
+      border-radius: 8px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+      transform: scale(0.95);
+      transition: transform 0.3s;
+    }
+    .lightbox.open img { transform: scale(1); }
+    .lightbox-close {
+      position: absolute; top: 20px; right: 24px;
+      width: 40px; height: 40px; border-radius: 50%;
+      background: rgba(255,255,255,0.1); border: 1px solid var(--border);
+      color: var(--text); font-size: 20px; cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      transition: background 0.2s;
+    }
+    .lightbox-close:hover { background: rgba(255,255,255,0.2); }
+
+    .footer-bar {
+      border-top: 1px solid var(--border);
+      padding: 40px 24px; text-align: center;
+    }
+    .footer-bar a {
+      color: var(--text-soft); text-decoration: none; font-size: 14px;
+      transition: color 0.2s;
+    }
+    .footer-bar a:hover { color: var(--text); }
+
+    @media (max-width: 768px) {
+      .posters-grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="bg-orbs">
+  <div class="orb orb-1"></div>
+  <div class="orb orb-2"></div>
+</div>
+
+<nav>
+  <div class="nav-inner">
+    <a href="index.html" class="nav-back">← 爱看书的YY</a>
+    <span class="nav-title">政企风宣传海报</span>
+  </div>
+</nav>
+
+<div class="content">
+
+  <div class="header">
+    <h1>政企风宣传海报</h1>
+    <p>3 张县域物流主题海报设计</p>
+    <div class="tags">
+      <span class="tag">海报设计</span>
+      <span class="tag">政企风</span>
+      <span class="tag">深蓝 + 金色</span>
+      <span class="tag">A3 竖版</span>
+    </div>
+  </div>
+
+  <div class="posters">
+    <div class="posters-grid">
+
+      <div class="poster-card" onclick="openLightbox('assets/post/yulianda-post.png')">
+        <img src="assets/post/yulianda-post.png" alt="项目主题海报" loading="lazy">
+        <div class="poster-label">
+          <div class="title">项目主题</div>
+          <div class="desc">县域智慧物流枢纽升级项目</div>
+        </div>
+      </div>
+
+      <div class="poster-card" onclick="openLightbox('assets/post/yulianda-logistics-post.png')">
+        <img src="assets/post/yulianda-logistics-post.png" alt="企业品牌海报" loading="lazy">
+        <div class="poster-label">
+          <div class="title">企业品牌</div>
+          <div class="desc">渝联达物流品牌介绍</div>
+        </div>
+      </div>
+
+      <div class="poster-card" onclick="openLightbox('assets/post/service country.png')">
+        <img src="assets/post/service country.png" alt="政策响应海报" loading="lazy">
+        <div class="poster-label">
+          <div class="title">政策响应</div>
+          <div class="desc">服务乡村振兴大通道</div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <div class="footer-bar">
+    <a href="index.html">← 返回作品集</a>
+  </div>
+
+</div>
+
+<!-- 灯箱 -->
+<div class="lightbox" id="lightbox" onclick="closeLightbox()">
+  <button class="lightbox-close" onclick="closeLightbox()">✕</button>
+  <img id="lightboxImg" src="" alt="">
+</div>
+
+<script>
+  function openLightbox(src) {
+    document.getElementById('lightboxImg').src = src;
+    document.getElementById('lightbox').classList.add('open');
+  }
+  function closeLightbox() {
+    document.getElementById('lightbox').classList.remove('open');
+  }
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape') closeLightbox();
+  });
+
+  // 光晕跟随
+  document.querySelectorAll('.poster-card').forEach(card => {
+    card.addEventListener('mousemove', e => {
+      const r = card.getBoundingClientRect();
+      card.style.setProperty('--mx', ((e.clientX - r.left) / r.width * 100) + '%');
+      card.style.setProperty('--my', ((e.clientY - r.top) / r.height * 100) + '%');
+    });
+  });
+</script>
+</body>
+</html>
